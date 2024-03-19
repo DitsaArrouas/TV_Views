@@ -80,3 +80,34 @@ app.post('/lastSearch', async (req, res) => {
         res.status(500).send('Error saving search');
     }
 });
+
+//API3_GET
+
+// Check MongoDB connection status
+async function checkDBConnection() {
+    try {
+        await client.connect();
+        client.close();
+        return true; // Connection successful
+    }
+    catch (error) {
+        return false; // Connection failed
+    }
+}
+
+// Health endpoint
+app.get('/health', async (req, res) => {
+    try {
+        const isConnected = await checkDBConnection();
+        if (isConnected) {
+            res.status(200).send(); // Connection to DB is OK empty response body
+        } 
+        else {
+            res.status(500).send('Error connecting to DB');// Connection to DB is not OK error response body
+        }
+    }
+    catch (error) {
+        console.error('Error checking DB connection:', error);
+        res.status(500).send('Internal server error');
+    }
+});
