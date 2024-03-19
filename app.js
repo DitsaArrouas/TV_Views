@@ -41,23 +41,13 @@ async function updateUserSearches(userId, searchPhrase, date) {
         const db = client.db(DB_NAME);
         const collection = db.collection(COLLECTION_NAME);
 
-        // Find if user already exists
-        const userSearches = await collection.findOne({ userId });
-
-        if (userSearches) {
-            // Update user searches
-            const index = userSearches.searches.length;
-            await collection.updateOne({ userId }, { $push: { searches: { searchPhrase, date, index } } });
-        } 
-        else {
-            // Insert new user searches
-            await collection.insertOne({ userId, searches: [{ searchPhrase, date, index: 0 }] });
-        }
-        //Close DB
-        client.close();
+        await collection.insertOne({ userId, searchPhrase, date });
     }
     catch (err) {
         throw new Error('Error updating user searches: ' + err.message);
+    }
+    finally {
+        await client.close();
     }
 }
 
@@ -87,11 +77,13 @@ app.post('/lastSearch', async (req, res) => {
 async function checkDBConnection() {
     try {
         await client.connect();
-        client.close();
         return true; // Connection successful
     }
     catch (error) {
         return false; // Connection failed
+    }
+    finally {
+        await client.close();
     }
 }
 
@@ -105,6 +97,75 @@ app.get('/health', async (req, res) => {
         else {
             res.status(500).send('Error connecting to DB');// Connection to DB is not OK error response body
         }
+    }
+    catch (error) {
+        console.error('Error checking DB connection:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
+//API4_GET get the last N searches for user X
+
+async function createIndex() {
+    try {
+        await client.connect();   
+        const db = client.db(DB_NAME);
+        const collection = db.collection(COLLECTION_NAME);
+
+        // Create index on userId and date fields
+        await collection.createIndex({ userId: 1, date: -1 });
+    } 
+    catch (error) {
+        console.error('Error creating index:', error);
+        res.status(500).send('Internal server error');
+    }
+    finally {
+        await client.close();
+    }
+}
+// Call the function to create the index
+createIndex();
+
+// Define the route handler function
+async function getLastNSearches(userId, limit) {
+    try {
+        await client.connect();
+        const db = client.db(DB_NAME);
+        const collection = db.collection(COLLECTION_NAME);
+
+        // Get the current date
+        const currentDate = new Date(Date.now());
+        const twoWeeksAgo = new Date();
+        twoWeeksAgo.setDate(currentDate.getDate() - 14);
+
+        // Retrieve last N searches for the user
+        const documents = await collection.find({ userId: userId, date: {$gte: twoWeeksAgo }})
+        .sort({ date: -1 })
+        .limit(limit)
+        .toArray();
+
+        const searchPhrases = documents.map(doc => doc.searchPhrase);
+
+        return `${userId}: ${searchPhrases}`;
+    } 
+    catch (error) {
+        console.error('Error retrieving last N searches: ', error);
+        throw new Error('Internal server error');
+    }
+    finally {
+        await client.close();
+    }
+}
+
+// Define the route for retrieving the N last searches for a user
+app.get('/lastSearches', async (req, res) => {
+    try {
+        const userId = req.query.userId;
+        const limit = parseInt(req.query.limit);
+
+        const lastSearches = await getLastNSearches(userId, limit);
+
+        res.status(200).send(lastSearches); // Connection to DB is OK empty response body
     }
     catch (error) {
         console.error('Error checking DB connection:', error);
