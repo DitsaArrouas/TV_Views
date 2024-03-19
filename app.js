@@ -1,19 +1,16 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-
 const { MongoClient } = require('mongodb');
 
 const MONGODB_URI = "mongodb://localhost:27017";
 const DB_NAME = 'TV_Views';
 const COLLECTION_NAME = 'Searches';
-const client = new MongoClient(MONGODB_URI,{family:4});
 
+const client = new MongoClient(MONGODB_URI,{family:4});
 
 const host = 'localhost';
 const port = 8080;
-
-app.use(bodyParser.json());
 
 app.listen(port,() => {
     console.log(`listening on http://${host}: ${port}`);
@@ -25,6 +22,8 @@ const requestTime = function(req, res, next) {
 }
 
 app.use(requestTime);
+
+app.use(bodyParser.json());
 
 app.all('/',(req, res) => {
     res.send('The routing you sent is incorrect');
@@ -38,6 +37,7 @@ app.get('/hello',(req, res) => {
 // Function to update or insert user searches
 async function updateUserSearches(userId, searchPhrase, date) {
     try {
+        //Connect to DB
         await client.connect();
         const db = client.db(DB_NAME);
         const collection = db.collection(COLLECTION_NAME);
@@ -54,7 +54,7 @@ async function updateUserSearches(userId, searchPhrase, date) {
             // Insert new user searches
             await collection.insertOne({ userId, searches: [{ searchPhrase, date, index: 0 }] });
         }
-
+        //Close DB
         client.close();
     }
     catch (err) {
