@@ -10,6 +10,7 @@ app.listen(port,() => {
     console.log(`listening on http://${host}: ${port}`);
 });
 
+//Middleware that showes calls details
 const requestTime = function(req, res, next) {
     console.log(`url: ${req.url}, time: ${new Date(Date.now())}`);
     next();

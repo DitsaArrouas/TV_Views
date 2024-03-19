@@ -1,16 +1,16 @@
 const express = require('express');
-const app = express();
 const router = express.Router();
 const controller = require("./controller.js");
 const bodyParser = require('body-parser');
 
 router.use(bodyParser.json());
 
+// API1_GET hello
 router.get('/hello',(req, res) => {
     res.status(200).send("Hello");
 })
 
-// POST route to save search data to MongoDB
+// API2_POST route to save search data to MongoDB
 router.post('/lastSearch', async (req, res) => {
     const { userId, searchPhrase } = req.body;
 
@@ -30,11 +30,11 @@ router.post('/lastSearch', async (req, res) => {
     }
 });
 
-//API3_GET
-// Health endpoint
+//API3_GET health
 router.get('/health', async (req, res) => {
     try {
         const isConnected = await controller.checkDBConnection();
+        
         if (isConnected) {
             res.status(200).send(); // Connection to DB is OK empty response body
         } 
@@ -69,7 +69,7 @@ router.get('/mostPopular', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit);
 
-        const mostPopular = await getMostPopularSearches(limit);
+        const mostPopular = await controller.getMostPopularSearches(limit);
 
         res.status(200).send(mostPopular); // Connection to DB is OK empty response body
     }
