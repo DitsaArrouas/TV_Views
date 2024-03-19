@@ -33,7 +33,6 @@ app.get('/hello',(req, res) => {
     res.status(200).send("Hello");
 })
 
-
 // Function to update or insert user searches
 async function updateUserSearches(userId, searchPhrase, date) {
     try {
