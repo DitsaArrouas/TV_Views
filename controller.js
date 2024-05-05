@@ -6,37 +6,34 @@ const MONGODB_URI = "mongodb://localhost:27017";
 const DB_NAME = 'TV_Views';
 const COLLECTION_NAME = 'Searches';
 
+//Connect to DB
 const mongoClient = new MongoClient(MONGODB_URI,{family:4});
+mongoClient.connect();
+const db = mongoClient.db(DB_NAME);
+const collection = db.collection(COLLECTION_NAME);
 
 // Function to insert user searches
 async function updateUserSearches(userId, searchPhrase, date) {
-    try {
-        //Connect to DB
-        await mongoClient.connect();
-        const db = mongoClient.db(DB_NAME);
-        const collection = db.collection(COLLECTION_NAME);
-
+    try {        
         await collection.insertOne({ userId, searchPhrase, date });
     }
     catch (err) {
         throw new Error('Error updating user searches: ' + err.message);
-    }
-    finally {
-        await mongoClient.close();
     }
 }
 
 // Check MongoDB connection status
 async function checkDBConnection() {
     try {
-        await mongoClient.connect();
+        const date = new Date(Date.now());
+        updateUserSearches(0, "0", date);
         return true; // Connection successful
     }
     catch (error) {
         return false; // Connection failed
     }
     finally {
-        await mongoClient.close();
+        collection.deleteOne({userId: 0});
     }
 }
 
@@ -44,12 +41,9 @@ async function checkDBConnection() {
 // Define the route handler function
 async function getLastNSearches(userId, limit) {
     try {
-        await mongoClient.connect();
-        const db = mongoClient.db(DB_NAME);
-        const collection = db.collection(COLLECTION_NAME);
-
         const twoWeeksAgo = new Date();
         twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14); // Get date 14 days ago
+        console.log(twoWeeksAgo.getDate());
     
         // Retrieve last N searches for the user
         const documents = await collection.find({ userId: userId, date: {$gte: twoWeeksAgo }})
@@ -65,18 +59,11 @@ async function getLastNSearches(userId, limit) {
         console.error('Error retrieving last N searches: ', error);
         throw new Error('Internal server error');
     }
-    finally {
-        await mongoClient.close();
-    }
 }
 
 async function getMostPopularSearches(limit) {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7); // Get date 7 days ago
-
-    await mongoClient.connect();
-    const db = mongoClient.db(DB_NAME);
-    const collection = db.collection(COLLECTION_NAME);
 
     const result = await collection.aggregate([
         { $match: { date: { $gte: weekAgo } } }, // Filter searches from the last 7 days
